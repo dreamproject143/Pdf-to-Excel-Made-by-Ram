@@ -13,31 +13,75 @@
         <p class="subtitle">Extract Data from PDFs to Excel</p>
         
         <form id="uploadForm" enctype="multipart/form-data">
-            <label for="fileInput" class="custom-file-upload">
-                📂 Choose PDF Files
+            <div id="drop-area">
                 <input type="file" name="files" id="fileInput" multiple accept=".pdf" hidden>
-            </label>
+                <div class="upload-icon">📂</div>
+                <p>Drag & Drop PDF files here<br>or <strong>click to select</strong></p>
+            </div>
+            
             <span id="fileLabel">No files chosen</span>
-            <button type="button" onclick="uploadFile()">📤 Upload Files</button>
+            
+            <button type="button" id="generateBtn" onclick="uploadAndProcess()">📊 Generate Excel Report</button>
         </form>
         
         <p id="message"></p>
-        <button onclick="processAndDownload()">📊 Generate Excel Report</button>
     </div>
 
-    <!-- Small Thank You Message -->
     <p class="thank-you">Thank you for giving chance, Mr. Bryan</p>
 
     <script>
-        document.getElementById('fileInput').addEventListener('change', function() {
-            let fileLabel = document.getElementById('fileLabel');
-            fileLabel.innerText = this.files.length > 0 ? 
-                `${this.files.length} PDF file(s) selected` : "No files chosen";
+        const fileInput = document.getElementById('fileInput');
+        const fileLabel = document.getElementById('fileLabel');
+        const dropArea = document.getElementById('drop-area');
+        const generateBtn = document.getElementById('generateBtn');
+
+        // Update text when files are picked
+        function updateFileLabel() {
+            const numFiles = fileInput.files.length;
+            if (numFiles > 0) {
+                fileLabel.innerText = `${numFiles} PDF file(s) selected`;
+                generateBtn.disabled = false;
+            } else {
+                fileLabel.innerText = "No files chosen";
+                generateBtn.disabled = true;
+            }
+        }
+        
+        // Open file selector when clicking the box
+        dropArea.addEventListener('click', () => { fileInput.click(); });
+        fileInput.addEventListener('change', updateFileLabel);
+
+        // Stop browser from opening the PDF file when dropping
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
         });
 
-        function uploadFile() {
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+        // Light up the box when dragging over it
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.add('drag-over'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, () => dropArea.classList.remove('drag-over'), false);
+        });
+
+        // Handle dropped files
+        dropArea.addEventListener('drop', handleDrop, false);
+
+        function handleDrop(e) {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            fileInput.files = files;
+            updateFileLabel();
+        }
+        
+        // This function does everything in one go
+        function uploadAndProcess() {
             const formData = new FormData();
-            const files = document.getElementById('fileInput').files;
+            const files = fileInput.files;
             
             if (files.length === 0) {
                 document.getElementById('message').innerText = 'Please select PDF files first';
@@ -45,7 +89,6 @@
                 return;
             }
 
-            // Validate file types
             for (let i = 0; i < files.length; i++) {
                 if (files[i].type !== 'application/pdf') {
                     document.getElementById('message').innerText = 'Please upload only PDF files';
@@ -57,51 +100,50 @@
 
             document.getElementById('message').innerText = 'Uploading and processing files...';
             document.getElementById('message').style.color = '#4CAF50';
+            generateBtn.disabled = true;
+            generateBtn.innerText = '⏳ Processing...';
 
-            fetch('/upload', { 
-                method: 'POST', 
-                body: formData 
-            })
+            // Step 1: Upload the files
+            fetch('/upload', { method: 'POST', body: formData })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('message').innerText = data.message;
-                document.getElementById('message').style.color = data.success ? '#4CAF50' : '#ff5252';
+                if (!data.success) {
+                    throw new Error(data.message || 'Error uploading files');
+                }
+                // Step 2: Automatically generate and download the file
+                return fetch('/process', { method: 'POST' });
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Error generating Excel file');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'PDF_Extracted_Data.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                document.getElementById('message').innerText = 'Excel file downloaded successfully!';
+                document.getElementById('message').style.color = '#4CAF50';
             })
             .catch(error => {
-                document.getElementById('message').innerText = 'Error uploading files';
+                document.getElementById('message').innerText = error.message;
                 document.getElementById('message').style.color = '#ff5252';
                 console.error('Error:', error);
+            })
+            .finally(() => {
+                generateBtn.disabled = false;
+                generateBtn.innerText = '📊 Generate Excel Report';
             });
         }
 
-        function processAndDownload() {
-            document.getElementById('message').innerText = 'Generating Excel file...';
-            document.getElementById('message').style.color = '#4CAF50';
-            
-            fetch('/process', { method: 'POST' })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Error generating Excel file');
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'PDF_Extracted_Data.xlsx';
-                    document.body.appendChild(a);
-                    a.click();
-                    window.URL.revokeObjectURL(url);
-                    document.getElementById('message').innerText = 'Excel file downloaded successfully!';
-                    document.getElementById('message').style.color = '#4CAF50';
-                })
-                .catch(error => {
-                    document.getElementById('message').innerText = error.message;
-                    document.getElementById('message').style.color = '#ff5252';
-                    console.error('Error:', error);
-                });
-        }
+        // Run on page load
+        updateFileLabel();
     </script>
 </body>
 </html>
