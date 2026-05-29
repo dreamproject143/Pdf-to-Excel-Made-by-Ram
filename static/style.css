@@ -66,25 +66,39 @@ h1 {
     color: rgba(255, 255, 255, 0.9);
 }
 
-/* Custom File Upload */
-.custom-file-upload {
-    display: block;
-    background: linear-gradient(135deg, #ff9800, #ff5722);
-    color: white;
-    padding: 12px 20px;
-    border-radius: 6px;
+/* New Drag and Drop Box Styling */
+#drop-area {
+    border: 2px dashed #ff9800;
+    border-radius: 8px;
+    padding: 40px 20px;
+    background-color: rgba(0, 0, 0, 0.3);
     cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    margin: 10px auto;
-    transition: 0.3s;
-    box-shadow: 0 3px 8px rgba(255, 87, 34, 0.6);
-    border: none;
+    transition: all 0.3s ease;
+    margin-bottom: 15px;
 }
 
-.custom-file-upload:hover {
-    background: linear-gradient(135deg, #e65100, #bf360c);
-    transform: translateY(-1px);
+#drop-area p {
+    margin: 0;
+    font-size: 16px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+#drop-area .upload-icon {
+    font-size: 40px;
+    margin-bottom: 10px;
+    transition: transform 0.3s ease;
+}
+
+#drop-area:hover .upload-icon {
+    transform: scale(1.1);
+}
+
+/* When a user drags a file over the box */
+#drop-area.drag-over {
+    border-color: #007BFF;
+    background-color: rgba(0, 123, 255, 0.15);
+    transform: scale(1.01);
+    box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
 }
 
 /* File Selection Label */
@@ -95,6 +109,7 @@ h1 {
     color: rgba(255, 255, 255, 0.8);
     font-style: italic;
     min-height: 18px;
+    margin-bottom: 10px;
 }
 
 /* Buttons */
@@ -114,9 +129,18 @@ button {
     max-width: 300px;
 }
 
-button:hover {
+button:hover:not(:disabled) {
     background: linear-gradient(135deg, #0056b3, #003f8a);
     transform: translateY(-1px);
+}
+
+/* Disabled Button Styling */
+button:disabled {
+    background: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: 0.6;
 }
 
 /* Message Display */
@@ -153,9 +177,5 @@ button:hover {
     button {
         font-size: 15px;
         padding: 12px 18px;
-    }
-    
-    .custom-file-upload {
-        font-size: 14px;
     }
 }
